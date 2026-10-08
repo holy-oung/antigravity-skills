@@ -1,0 +1,1223 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Renju Omok — 금수 가이드 & 대국 복기 리포트</title>
+  <script src="https://www.gstatic.com/antigravity/web/dev/tailwindcss.min.js"></script>
+  <style>
+    body {
+      font-family: 'SF Pro Display', 'Geist Sans', 'Pretendard', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .font-mono-code {
+      font-family: 'Geist Mono', 'SF Mono', 'JetBrains Mono', monospace;
+    }
+    @keyframes pulseRing {
+      0%, 100% { transform: scale(1); opacity: 1; }
+      50% { transform: scale(1.18); opacity: 0.68; }
+    }
+    .pulse-marker {
+      animation: pulseRing 1.2s infinite ease-in-out;
+      transform-origin: center;
+      transform-box: fill-box;
+    }
+  </style>
+</head>
+<body class="bg-transparent text-[var(--foreground)] antialiased p-2.5 select-none">
+  <div class="bg-[var(--card)] text-[var(--foreground)] border border-[var(--border)] rounded-xl p-3.5 shadow-sm max-w-5xl mx-auto">
+
+    <!-- Top Header & Mode Controls -->
+    <div class="flex flex-wrap items-center justify-between gap-2 pb-2.5 mb-3 border-b border-[var(--border)]">
+      <div class="flex items-center gap-2">
+        <span class="font-semibold text-sm tracking-tight">오목 렌주룰 금수 &amp; 복기 분석기</span>
+        <span id="turn-badge" class="px-2 py-0.5 rounded-full text-[11px] font-mono-code font-medium bg-zinc-900 text-white border border-zinc-700">
+          ● 흑돌 차례 (금수 적용)
+        </span>
+      </div>
+
+      <div class="flex flex-wrap items-center gap-1.5">
+        <div class="inline-flex rounded-md border border-[var(--border)] p-0.5 bg-[var(--background)] text-[11px]">
+          <button id="color-black" onclick="setHumanColor(1)" class="px-2 py-0.5 rounded font-medium bg-zinc-900 text-white">내 돌: ●흑(선공)</button>
+          <button id="color-white" onclick="setHumanColor(2)" class="px-2 py-0.5 rounded font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)]">○백(후공)</button>
+        </div>
+        <div class="inline-flex rounded-md border border-[var(--border)] p-0.5 bg-[var(--background)] text-[11px]">
+          <button id="mode-ai" onclick="setGameMode('ai')" class="px-2 py-0.5 rounded font-medium bg-[var(--primary)] text-[var(--primary-foreground)]">1인 vs AI</button>
+          <button id="mode-pvp" onclick="setGameMode('pvp')" class="px-2 py-0.5 rounded font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)]">2인 교대</button>
+        </div>
+        <button id="toggle-hint-btn" onclick="toggleHints()" class="px-2 py-1 text-[11px] font-mono-code rounded border border-[var(--border)] bg-[var(--background)] hover:opacity-80">
+          금수표시: ON
+        </button>
+        <button onclick="undoMove()" class="px-2 py-1 text-[11px] rounded border border-[var(--border)] bg-[var(--background)] hover:opacity-80">
+          무르기
+        </button>
+        <button onclick="resetGame()" class="px-2.5 py-1 text-[11px] font-medium rounded bg-zinc-800 text-white hover:bg-zinc-700">
+          새 게임
+        </button>
+      </div>
+    </div>
+
+    <!-- Main Layout: Board (Left) + Tabbed Guide / Post-Game Review Report (Right) -->
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-3.5 items-start">
+
+      <!-- Left Column: 15x15 Interactive SVG Omok Board -->
+      <div class="md:col-span-6 flex flex-col items-center">
+        <div class="relative rounded-lg border border-[#C8A97E] shadow-inner p-1.5" style="background-color: #DCB35C;">
+          <svg id="board-svg" viewBox="0 0 380 380"
+            onclick="const cell = getBoardCellFromEvent(event); if (cell) handleCellClick(cell.r, cell.c);"
+            onmousemove="const cell = getBoardCellFromEvent(event); if (cell) handleCellHover(cell.r, cell.c);"
+            class="w-[336px] h-[336px] sm:w-[364px] sm:h-[364px] cursor-pointer block"></svg>
+        </div>
+        <!-- Compact Board Legend -->
+        <div class="w-full flex flex-wrap items-center justify-between gap-1 mt-1.5 px-1 text-[10px] text-[var(--muted-foreground)] font-mono-code">
+          <div class="flex items-center gap-2.5">
+            <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-red-600 inline-block"></span>금수(33/44/6+)</span>
+            <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>★최선수(BEST)</span>
+            <span class="inline-flex items-center gap-1"><span class="w-2 h-2 rounded-full border-2 border-amber-500 inline-block"></span>조합 연결줄기</span>
+          </div>
+          <span id="board-mode-indicator">실시간 대국 모드</span>
+        </div>
+      </div>
+
+      <!-- Right Column: Switchable Tabs (1. 금수 가이드 & 프리셋 | 2. 대국 복기 & 최선수 리포트) -->
+      <div class="md:col-span-6 flex flex-col space-y-2.5">
+
+        <!-- Right Panel View Switcher -->
+        <div class="flex items-center justify-between rounded-lg border border-[var(--border)] p-0.5 bg-[var(--background)]">
+          <button id="tab-guide-btn" onclick="switchRightTab('guide')" class="flex-1 py-1 text-xs font-semibold rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] transition-all">
+            실시간 금수 가이드
+          </button>
+          <button id="tab-review-btn" onclick="switchRightTab('review')" class="flex-1 py-1 text-xs font-semibold rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all">
+            대국 복기 &amp; 최선수 리포트 <span id="review-count-badge" class="ml-1 px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-500/20 text-emerald-500 font-mono-code">0수</span>
+          </button>
+        </div>
+
+        <!-- PANEL 1: Real-Time Forbidden Move Guide & Presets -->
+        <div id="panel-guide" class="space-y-2.5">
+          <div id="guide-box" class="rounded-lg border border-[var(--border)] bg-[var(--background)] p-3 transition-all">
+            <div class="flex items-center justify-between mb-1">
+              <span id="guide-tag" class="text-[10px] font-mono-code uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-500 font-semibold">
+                RENJU RULE ACTIVE
+              </span>
+              <span id="coord-label" class="text-[11px] font-mono-code text-[var(--muted-foreground)]">15×15 표준 보드</span>
+            </div>
+            <h3 id="guide-title" class="text-xs sm:text-sm font-semibold mt-1">
+              흑돌(선공)은 3-3, 4-4, 6목 이상(장목) 자리에 둘 수 없습니다.
+            </h3>
+            <p id="guide-desc" class="text-xs text-[var(--muted-foreground)] mt-1 leading-relaxed">
+              금수 자리에 착수를 시도하면 <strong>착수를 차단</strong>하고 왜 금수인지 안내합니다. 판이 끝나면 자동으로 <strong>우측 [대국 복기 &amp; 최선수 리포트]</strong>가 열립니다.
+            </p>
+            <div id="guide-tip" class="mt-2 pt-2 border-t border-[var(--border)] text-[11px] text-[var(--muted-foreground)] font-mono-code">
+              TIP: 아래 [5번 복기 리포트 예시] 버튼을 누르면 완료된 대국의 복기 리포트를 즉시 체험할 수 있습니다!
+            </div>
+          </div>
+
+          <!-- Presets Grid -->
+          <div class="rounded-lg border border-[var(--border)] bg-[var(--background)] p-2.5">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-semibold">금수 &amp; 복기 1초 체험 프리셋</span>
+              <span class="text-[10px] font-mono-code text-[var(--muted-foreground)]">클릭 시 즉시 세팅</span>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5">
+              <button onclick="loadPreset('33-basic')" class="text-left p-2 rounded border border-[var(--border)] bg-[var(--card)] hover:border-red-500/60 transition-colors">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold">1. 기본 3-3 금수</span>
+                  <span class="text-[10px] font-mono-code px-1.5 rounded bg-red-500/15 text-red-500">33</span>
+                </div>
+                <div class="text-[10px] text-[var(--muted-foreground)] mt-0.5">가로+세로 열린 3 교차</div>
+              </button>
+
+              <button onclick="loadPreset('33-jump')" class="text-left p-2 rounded border border-[var(--border)] bg-[var(--card)] hover:border-red-500/60 transition-colors">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold">2. 한 칸 띈 3-3</span>
+                  <span class="text-[10px] font-mono-code px-1.5 rounded bg-red-500/15 text-red-500">33</span>
+                </div>
+                <div class="text-[10px] text-[var(--muted-foreground)] mt-0.5">떨어진 활삼 교차 차단</div>
+              </button>
+
+              <button onclick="loadPreset('44-basic')" class="text-left p-2 rounded border border-[var(--border)] bg-[var(--card)] hover:border-red-500/60 transition-colors">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold">3. 4-4(사사) 금수</span>
+                  <span class="text-[10px] font-mono-code px-1.5 rounded bg-orange-500/15 text-orange-500">44</span>
+                </div>
+                <div class="text-[10px] text-[var(--muted-foreground)] mt-0.5">양방향 동시 4 형성 차단</div>
+              </button>
+
+              <button onclick="loadPreset('overline-6')" class="text-left p-2 rounded border border-[var(--border)] bg-[var(--card)] hover:border-red-500/60 transition-colors">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold">4. 6목(장목) 금수</span>
+                  <span class="text-[10px] font-mono-code px-1.5 rounded bg-purple-500/15 text-purple-500">6+</span>
+                </div>
+                <div class="text-[10px] text-[var(--muted-foreground)] mt-0.5">6개 연속 연결 금지</div>
+              </button>
+
+              <button onclick="loadPreset('sample-review')" class="col-span-2 text-left p-2 rounded border border-emerald-500/50 bg-emerald-500/10 hover:bg-emerald-500/15 transition-colors">
+                <div class="flex items-center justify-between">
+                  <span class="text-xs font-semibold text-emerald-500">5. 실전 대국 완료 &amp; 복기 리포트 예시 바로 보기 (추천)</span>
+                  <span class="text-[10px] font-mono-code px-1.5 py-0.5 rounded bg-emerald-600 text-white">REPORT</span>
+                </div>
+                <div class="text-[11px] text-[var(--muted-foreground)] mt-0.5">백의 실착(4-3 방치)과 흑의 4-3 필승 조합이 포함된 11수 대국을 즉시 복기합니다.</div>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- PANEL 2: Post-Game Review & Best Move / Combination Report -->
+        <div id="panel-review" class="hidden space-y-2">
+
+          <!-- Summary Scorecard -->
+          <div class="rounded-lg border border-[var(--border)] bg-[var(--background)] p-2.5">
+            <div class="flex items-center justify-between mb-1.5">
+              <span class="text-xs font-semibold" id="report-summary-title">대국 종합 분석 리포트</span>
+              <div class="flex items-center gap-1">
+                <button onclick="stepReplay(-1)" class="px-2 py-0.5 text-[11px] font-mono-code rounded border border-[var(--border)] bg-[var(--card)] hover:opacity-80">◀ 이전 수</button>
+                <span id="replay-step-label" class="text-[11px] font-mono-code px-1.5">0 / 0</span>
+                <button onclick="stepReplay(1)" class="px-2 py-0.5 text-[11px] font-mono-code rounded border border-[var(--border)] bg-[var(--card)] hover:opacity-80">다음 수 ▶</button>
+                <button onclick="exitReplay()" class="px-2 py-0.5 text-[10px] font-mono-code rounded bg-zinc-700 text-white hover:bg-zinc-600">현재판</button>
+              </div>
+            </div>
+
+            <div class="grid grid-cols-4 gap-1.5 text-center font-mono-code text-[11px]">
+              <div class="rounded bg-[var(--card)] border border-[var(--border)] py-1 px-1.5">
+                <div class="text-[10px] text-[var(--muted-foreground)]">정확도</div>
+                <div id="stat-acc" class="font-bold text-emerald-500">100%</div>
+              </div>
+              <div class="rounded bg-[var(--card)] border border-[var(--border)] py-1 px-1.5">
+                <div class="text-[10px] text-[var(--muted-foreground)]">★최선/호수</div>
+                <div id="stat-best" class="font-bold text-blue-400">0</div>
+              </div>
+              <div class="rounded bg-[var(--card)] border border-[var(--border)] py-1 px-1.5">
+                <div class="text-[10px] text-[var(--muted-foreground)]">▲아쉬운수</div>
+                <div id="stat-inac" class="font-bold text-amber-500">0</div>
+              </div>
+              <div class="rounded bg-[var(--card)] border border-[var(--border)] py-1 px-1.5">
+                <div class="text-[10px] text-[var(--muted-foreground)]">❓실착/패착</div>
+                <div id="stat-blunder" class="font-bold text-red-500">0</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Selected Move Deep-Dive (What was the better move & What combination to look for) -->
+          <div id="move-detail-box" class="rounded-lg border border-[var(--border)] bg-[var(--background)] p-2.5">
+            <div class="flex items-center justify-between mb-1">
+              <span id="detail-badge" class="text-[10px] font-mono-code px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 font-semibold">
+                수순을 선택하세요
+              </span>
+              <span id="detail-coords" class="text-[11px] font-mono-code text-[var(--muted-foreground)]">실제 착수 vs 추천 최선수</span>
+            </div>
+            <div id="detail-headline" class="text-xs font-semibold mt-1">
+              아래 수순 목록을 클릭하면 보드에 당시 상황과 ★최선수(초록색 별)가 표시됩니다.
+            </div>
+            <div id="detail-combo" class="text-[11px] text-[var(--muted-foreground)] mt-1 leading-relaxed">
+              그 수에서 어떤 공격/수비 조합(4-3 사삼, 열린 3 길목 차단, 4 선수 활용 등)을 봐야 했는지 해설해 드립니다.
+            </div>
+          </div>
+
+          <!-- Scrollable Move-by-Move History List -->
+          <div class="rounded-lg border border-[var(--border)] bg-[var(--background)] p-2">
+            <div class="text-[10px] font-mono-code text-[var(--muted-foreground)] mb-1 flex justify-between px-1">
+              <span>수순 / 실제 착수 (패턴)</span>
+              <span>판정 / 추천 최선수(★)</span>
+            </div>
+            <div id="review-list" class="max-h-[125px] overflow-y-auto space-y-1 pr-1 font-mono-code text-[11px]">
+              <div class="text-center text-xs text-[var(--muted-foreground)] py-4">아직 착수 기록이 없습니다.</div>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const N = 15, EMPTY = 0, BLACK = 1, WHITE = 2;
+    const DIRS = [
+      { dr: 0, dc: 1, name: '가로(─)' },
+      { dr: 1, dc: 0, name: '세로(│)' },
+      { dr: 1, dc: 1, name: '우하향(↘)' },
+      { dr: 1, dc: -1, name: '우상향(↗)' }
+    ];
+    const thePAD = 22, STEP = 24;
+
+    let board = Array.from({ length: N }, () => Array(N).fill(EMPTY));
+    let turn = BLACK;
+    let humanColor = BLACK; // BLACK (1) or WHITE (2)
+    let gameMode = 'ai';
+    let showHints = true;
+    let gameOver = false;
+    let moveHistory = []; // Array of rich review objects
+    let forbiddenMap = new Map();
+    let activeForbiddenHighlight = null;
+    let winCells = [];
+    let replayIndex = null; // null = live board, 0..moveHistory.length-1 = reviewing specific move
+    let activeRightTab = 'guide';
+
+    const inBounds = (r, c) => r >= 0 && r < N && c >= 0 && c < N;
+    const coordStr = (r, c) => `${String.fromCharCode(65 + c)}${15 - r}`;
+    const cloneBoard = (b) => b.map((row) => row.slice());
+
+    function lineLen(b, r, c, color, dr, dc) {
+      let cnt = 1;
+      for (let s = 1; s < N; s++) { if (inBounds(r + dr * s, c + dc * s) && b[r + dr * s][c + dc * s] === color) cnt++; else break; }
+      for (let s = 1; s < N; s++) { if (inBounds(r - dr * s, c - dc * s) && b[r - dr * s][c - dc * s] === color) cnt++; else break; }
+      return cnt;
+    }
+
+    function getLineCells(b, r, c, color, dr, dc) {
+      const cells = [[r, c]];
+      for (let s = 1; s < N; s++) { if (inBounds(r + dr * s, c + dc * s) && b[r + dr * s][c + dc * s] === color) cells.push([r + dr * s, c + dc * s]); else break; }
+      for (let s = 1; s < N; s++) { if (inBounds(r - dr * s, c - dc * s) && b[r - dr * s][c - dc * s] === color) cells.unshift([r - dr * s, c - dc * s]); else break; }
+      return cells;
+    }
+
+    function analyzeDirFourForColor(b, r, c, color, dr, dc) {
+      const fours = [];
+      for (let offset = -4; offset <= 0; offset++) {
+        const startR = r + dr * offset, startC = c + dc * offset;
+        const endR = startR + dr * 4, endC = startC + dc * 4;
+        if (!inBounds(startR, startC) || !inBounds(endR, endC)) continue;
+        if (color === BLACK) {
+          const prevR = startR - dr, prevC = startC - dc;
+          const nextR = endR + dr, nextC = endC + dc;
+          if (inBounds(prevR, prevC) && b[prevR][prevC] === BLACK) continue;
+          if (inBounds(nextR, nextC) && b[nextR][nextC] === BLACK) continue;
+        }
+        let cnt = 0, emptyCell = null, stones = [];
+        for (let k = 0; k < 5; k++) {
+          const cr = startR + dr * k, cc = startC + dc * k;
+          const v = b[cr][cc];
+          if (v === color) { cnt++; stones.push([cr, cc]); }
+          else if (v === EMPTY) emptyCell = [cr, cc];
+        }
+        if (cnt === 4 && emptyCell) fours.push({ emptyCell, stones });
+      }
+      if (fours.length === 0) return { count: 0, isLiveFour: false, stones: [], emptyCells: [] };
+      const byEmpty = new Map();
+      for (const f of fours) {
+        const key = `${f.emptyCell[0]},${f.emptyCell[1]}`;
+        if (!byEmpty.has(key)) byEmpty.set(key, f);
+      }
+      const unique = [...byEmpty.values()];
+      if (unique.length === 1) {
+        return { count: 1, isLiveFour: false, stones: unique[0].stones, emptyCells: [unique[0].emptyCell] };
+      }
+      if (lineLen(b, r, c, color, dr, dc) === 4) {
+        return { count: 1, isLiveFour: true, stones: getLineCells(b, r, c, color, dr, dc), emptyCells: unique.map(u => u.emptyCell) };
+      }
+      return { count: unique.length, isLiveFour: false, stones: unique.flatMap(u => u.stones), emptyCells: unique.map(u => u.emptyCell) };
+    }
+
+    function checkForbidden(b, r, c, depth = 0) {
+      if (b[r][c] !== EMPTY) return null;
+      b[r][c] = BLACK;
+      try {
+        for (const { dr, dc } of DIRS) {
+          if (lineLen(b, r, c, BLACK, dr, dc) === 5) return null;
+        }
+        for (const { dr, dc, name } of DIRS) {
+          if (lineLen(b, r, c, BLACK, dr, dc) >= 6) {
+            const cells = getLineCells(b, r, c, BLACK, dr, dc).filter(([sr, sc]) => !(sr === r && sc === c));
+            return {
+              type: '6+', badge: '6+',
+              title: `6목(장목) 금수 차단 [${coordStr(r, c)}]`,
+              reason: `${name} 방향으로 흑돌이 ${cells.length + 1}개 연속 연결됩니다. 렌주룰에서 흑은 정확히 5목만 승리하며 6목 이상은 금수입니다.`,
+              solution: '해결 가이드: 장목이 되지 않도록 한 칸 띄워 공격하거나 다른 방향의 4-3 공격 루트를 먼저 만드세요.',
+              stones: cells, spots: []
+            };
+          }
+        }
+        let totalFours = 0, fourStones = [], fourSpots = [], fourDirNames = [];
+        const dirHasFour = [false, false, false, false];
+        DIRS.forEach(({ dr, dc, name }, idx) => {
+          const res = analyzeDirFourForColor(b, r, c, BLACK, dr, dc);
+          if (res.count > 0) {
+            dirHasFour[idx] = true;
+            totalFours += res.count;
+            fourDirNames.push(res.count > 1 ? `${name}(이중4)` : name);
+            fourStones.push(...res.stones.filter(([sr, sc]) => !(sr === r && sc === c)));
+            fourSpots.push(...res.emptyCells);
+          }
+        });
+        if (totalFours >= 2) {
+          return {
+            type: '4-4', badge: '44',
+            title: `4-4(사사) 금수 차단 [${coordStr(r, c)}]`,
+            reason: `${fourDirNames.join(' + ')} 방향에서 동시에 '4'가 2개 이상 만들어져 착수가 차단되었습니다.`,
+            solution: '해결 가이드: 한쪽 4를 먼저 선수로 쳐서 백이 막게 한 뒤 다른 공격으로 전환하거나, 합법 필승수인 [4-3(사삼)] 조합을 노리세요.',
+            stones: fourStones, spots: fourSpots
+          };
+        }
+        if (depth < 2) {
+          let openThrees = 0, threeStones = [], threeSpots = [], threeDirNames = [];
+          DIRS.forEach(({ dr, dc, name }, idx) => {
+            if (dirHasFour[idx]) return;
+            for (let step = -3; step <= 3; step++) {
+              if (step === 0) continue;
+              const nr = r + dr * step, nc = c + dc * step;
+              if (!inBounds(nr, nc) || b[nr][nc] !== EMPTY) continue;
+              b[nr][nc] = BLACK;
+              const fourAfter = analyzeDirFourForColor(b, nr, nc, BLACK, dr, dc);
+              b[nr][nc] = EMPTY;
+              if (fourAfter.isLiveFour && !checkForbidden(b, nr, nc, depth + 1)) {
+                openThrees++;
+                threeDirNames.push(name);
+                threeStones.push(...fourAfter.stones.filter(([sr, sc]) => !(sr === r && sc === c) && !(sr === nr && sc === nc)));
+                threeSpots.push([nr, nc]);
+                break;
+              }
+            }
+          });
+          if (openThrees >= 2) {
+            return {
+              type: '3-3', badge: '33',
+              title: `3-3(삼삼) 금수 차단 [${coordStr(r, c)}]`,
+              reason: `${threeDirNames.join(' + ')} 방향에서 동시에 '열린 3(활삼)'이 만들어져 착수가 금지됩니다.`,
+              solution: '해결 가이드: 흑은 3-3은 금지지만 [4-3(한 줄은 4, 한 줄은 열린 3)]은 합법 필승수입니다! 한쪽 줄에 먼저 돌을 보태 4-3 각을 만드세요.',
+              stones: threeStones, spots: threeSpots
+            };
+          }
+        }
+        return null;
+      } finally {
+        b[r][c] = EMPTY;
+      }
+    }
+
+    // Evaluate offensive pattern created by placing `color` at (r,c)
+    function inspectOffensivePattern(b, r, c, color) {
+      b[r][c] = color;
+      try {
+        for (const { dr, dc, name } of DIRS) {
+          const len = lineLen(b, r, c, color, dr, dc);
+          if ((color === BLACK && len === 5) || (color === WHITE && len >= 5)) {
+            return {
+              score: 100000,
+              tag: '5목 완성(결정수)',
+              comboDesc: `${name} 방향 5목 완성으로 즉시 승리하는 수`,
+              comboCells: getLineCells(b, r, c, color, dr, dc)
+            };
+          }
+        }
+        let fours = 0, liveFours = 0, openThrees = 0;
+        let fourDirs = [], threeDirs = [], comboCells = [[r, c]];
+
+        DIRS.forEach(({ dr, dc, name }) => {
+          const fRes = analyzeDirFourForColor(b, r, c, color, dr, dc);
+          if (fRes.count > 0) {
+            fours += fRes.count;
+            if (fRes.isLiveFour) liveFours++;
+            fourDirs.push(name);
+            comboCells.push(...fRes.stones);
+          } else {
+            for (let step = -3; step <= 3; step++) {
+              if (step === 0) continue;
+              const nr = r + dr * step, nc = c + dc * step;
+              if (!inBounds(nr, nc) || b[nr][nc] !== EMPTY) continue;
+              b[nr][nc] = color;
+              const fa = analyzeDirFourForColor(b, nr, nc, color, dr, dc);
+              b[nr][nc] = EMPTY;
+              if (fa.isLiveFour && (color === WHITE || !checkForbidden(b, nr, nc, 1))) {
+                openThrees++;
+                threeDirs.push(name);
+                comboCells.push(...fa.stones.filter(([sr, sc]) => !(sr === nr && sc === nc)));
+                break;
+              }
+            }
+          }
+        });
+
+        if (liveFours >= 1) {
+          return {
+            score: 30000,
+            tag: '열린 4(활사) 생성',
+            comboDesc: `${fourDirs.join('+')} 방향 양쪽이 열린 4를 만들어 상대가 막을 수 없는 필승 조합`,
+            comboCells
+          };
+        }
+        if (fours >= 1 && openThrees >= 1) {
+          return {
+            score: 26000,
+            tag: '4-3(사삼) 필승조합',
+            comboDesc: `${fourDirs[0]} 4(선수)와 ${threeDirs[0]} 열린 3을 동시에 만드는 합법 필승 양수겸장 조합`,
+            comboCells
+          };
+        }
+        if (color === WHITE && (fours >= 2 || openThrees >= 2)) {
+          return {
+            score: 25000,
+            tag: fours >= 2 ? '백 4-4 이중공격' : '백 3-3 양수겸장',
+            comboDesc: `백돌은 금수가 없다는 점을 활용해 ${[...fourDirs, ...threeDirs].join('+')} 동시 공격을 만드는 필승 조합`,
+            comboCells
+          };
+        }
+        if (fours >= 1) {
+          return {
+            score: 3200 + openThrees * 500,
+            tag: '4(사) 선수 공격',
+            comboDesc: `${fourDirs[0]} 방향 4를 만들어 상대의 응수를 강제하고 주도권을 잡는 수`,
+            comboCells
+          };
+        }
+        if (openThrees >= 1) {
+          return {
+            score: 2800,
+            tag: '열린 3(활삼) 공격',
+            comboDesc: `${threeDirs[0]} 방향 열린 3을 만들어 다음 수에 열린 4 또는 4-3 연결을 노리는 조합`,
+            comboCells
+          };
+        }
+
+        // Connectivity & potential
+        let conn = 0, maxLine = 1, bestDirName = '중앙';
+        for (const { dr, dc, name } of DIRS) {
+          const len = lineLen(b, r, c, color, dr, dc);
+          if (len > maxLine) { maxLine = len; bestDirName = name; }
+          if (len === 3) conn += 420;
+          else if (len === 2) conn += 180;
+          // Also check 1-gap jump connections
+          for (const s of [-2, -1, 1, 2]) {
+            if (inBounds(r + dr * s, c + dc * s) && b[r + dr * s][c + dc * s] === color) conn += 35;
+          }
+        }
+        const center = 28 - (Math.abs(r - 7) + Math.abs(c - 7)) * 2;
+        return {
+          score: conn + center,
+          tag: maxLine >= 2 ? '세력 연결 행마' : '중앙 포석',
+          comboDesc: `${bestDirName} 방향 돌들을 연결하며 다음 수에 열린 3 각을 준비하는 기반 행마`,
+          comboCells: getLineCells(b, r, c, color, DIRS[0].dr, DIRS[0].dc)
+        };
+      } finally {
+        b[r][c] = EMPTY;
+      }
+    }
+
+    // Combined Offensive + Defensive Evaluation for a candidate move (r,c) by `color`
+    function evaluateCandidateMove(b, r, c, color) {
+      if (b[r][c] !== EMPTY) return null;
+      if (color === BLACK && checkForbidden(b, r, c, 0)) return null;
+
+      const opp = color === BLACK ? WHITE : BLACK;
+      const off = inspectOffensivePattern(b, r, c, color);
+
+      // What if opponent plays at (r,c)? (Check if opponent is legal there)
+      const oppForbidden = (opp === BLACK) ? checkForbidden(b, r, c, 0) : null;
+      const def = oppForbidden ? { score: 0, tag: '', comboDesc: '', comboCells: [] } : inspectOffensivePattern(b, r, c, opp);
+
+      // Priority hierarchy:
+      // 1. My 5-in-a-row win (100,000)
+      if (off.score >= 100000) {
+        return { r, c, total: 100000, tag: off.tag, comboDesc: off.comboDesc, comboCells: off.comboCells };
+      }
+      // 2. Block Opponent's immediate 5-in-a-row (90,000)
+      if (def.score >= 100000) {
+        return {
+          r, c, total: 90000,
+          tag: '상대 5목 절대방어',
+          comboDesc: `상대의 4(다음 수 5목 완성 자리)를 즉시 막아 패배를 방어하는 필수 응수`,
+          comboCells: def.comboCells
+        };
+      }
+      // 3. My Live 4 or 4-3 Winning Combo (25,000~30,000)
+      if (off.score >= 25000) {
+        return { r, c, total: off.score + def.score * 0.2, tag: off.tag, comboDesc: off.comboDesc, comboCells: off.comboCells };
+      }
+      // 4. Block Opponent's Live 4 or 4-3 or Double-3/4 Winning Combo (22,000)
+      if (def.score >= 25000) {
+        return {
+          r, c, total: 22000 + off.score * 0.2,
+          tag: `상대 [${def.tag}] 급소 차단`,
+          comboDesc: `상대가 이 자리에 두면 [${def.tag}]이 완성되므로 반드시 먼저 선점해 조합을 깨야 하는 방어 급소`,
+          comboCells: def.comboCells
+        };
+      }
+      // 5. Block Opponent's Open 3 while building my own shape, or play my Open 3 / 4
+      if (def.score >= 2800 && def.score > off.score) {
+        return {
+          r, c, total: def.score * 1.05 + off.score * 0.4,
+          tag: '상대 열린3(활삼) 길목 차단',
+          comboDesc: `상대의 열린 3(다음 수 열린 4 위협)을 사전에 차단하면서 내 세력을 넓히는 공방겸비 수`,
+          comboCells: def.comboCells
+        };
+      }
+      // White occupying Black's forbidden point
+      let forbiddenBonus = 0;
+      if (color === WHITE && oppForbidden) {
+        forbiddenBonus = 450;
+      }
+
+      return {
+        r, c,
+        total: off.score + def.score * 0.55 + forbiddenBonus,
+        tag: off.tag,
+        comboDesc: off.comboDesc,
+        comboCells: off.comboCells
+      };
+    }
+
+    function findBestMove(b, color) {
+      let hasAnyStone = false;
+      for (let r = 0; r < N; r++) for (let c = 0; c < N; c++) if (b[r][c] !== EMPTY) hasAnyStone = true;
+      if (!hasAnyStone) {
+        return {
+          r: 7, c: 7, total: 100,
+          tag: '천원(중앙) 첫수',
+          comboDesc: '오목의 정석 첫수로 모든 방향(가로·세로·대각선)으로 가장 넓게 뻗어나갈 수 있는 중앙 자리',
+          comboCells: [[7, 7]]
+        };
+      }
+
+      let best = null;
+      for (let r = 0; r < N; r++) {
+        for (let c = 0; c < N; c++) {
+          if (b[r][c] !== EMPTY) continue;
+          // Only evaluate cells within distance 2 of any existing stone for speed & relevance
+          let near = false;
+          for (let dr = -2; dr <= 2 && !near; dr++) {
+            for (let dc = -2; dc <= 2 && !near; dc++) {
+              if (inBounds(r + dr, c + dc) && b[r + dr][c + dc] !== EMPTY) near = true;
+            }
+          }
+          if (!near) continue;
+
+          const ev = evaluateCandidateMove(b, r, c, color);
+          if (ev && (!best || ev.total > best.total)) {
+            best = ev;
+          }
+        }
+      }
+      return best;
+    }
+
+    function recordAndPlaceStone(r, c) {
+      activeForbiddenHighlight = null;
+      replayIndex = null;
+
+      const boardBefore = cloneBoard(board);
+      const actualEval = evaluateCandidateMove(boardBefore, r, c, turn) || {
+        r, c, total: 10, tag: '일반 행마', comboDesc: '기본 착수', comboCells: [[r, c]]
+      };
+      const bestEval = findBestMove(boardBefore, turn) || actualEval;
+
+      const isSameCell = (bestEval.r === r && bestEval.c === c);
+      const diff = bestEval.total - actualEval.total;
+
+      let grade = 'BEST';
+      let gradeLabel = '★ 최선수';
+      if (!isSameCell) {
+        if (bestEval.total >= 20000 && actualEval.total < 15000) {
+          grade = 'BLUNDER';
+          gradeLabel = '❓ 결정적 실착';
+        } else if (diff >= 1200) {
+          grade = 'INACCURACY';
+          gradeLabel = '▲ 아쉬운 수';
+        } else if (diff >= 180) {
+          grade = 'GOOD';
+          gradeLabel = '● 호수';
+        }
+      }
+
+      const whyBetter = isSameCell
+        ? `정확한 판단입니다! 이 자리(${coordStr(r, c)})가 현재 국면에서 가장 강력한 [${bestEval.tag}] 자리였습니다.`
+        : `이 수에서는 ${coordStr(r, c)}(${actualEval.tag})보다 ★${coordStr(bestEval.r, bestEval.c)} 자리가 더 좋았습니다. 봤어야 할 핵심 조합: ${bestEval.comboDesc}`;
+
+      board[r][c] = turn;
+      moveHistory.push({
+        step: moveHistory.length + 1,
+        color: turn,
+        r, c,
+        boardSnapshot: cloneBoard(board),
+        actualTag: actualEval.tag,
+        actualCombo: actualEval.comboDesc,
+        bestR: bestEval.r,
+        bestC: bestEval.c,
+        bestTag: bestEval.tag,
+        bestCombo: bestEval.comboDesc,
+        bestComboCells: bestEval.comboCells,
+        grade,
+        gradeLabel,
+        whyBetter
+      });
+
+      document.getElementById('review-count-badge').textContent = `${moveHistory.length}수`;
+      renderReviewReport();
+
+      const winLine = checkWin(r, c, turn);
+      if (winLine) {
+        gameOver = true;
+        winCells = winLine;
+        updateTurnBadge();
+        showGuide('win', {
+          title: `${turn === BLACK ? '● 흑돌' : '○ 백돌'} 승리! (${moveHistory.length}수 만에 5목 완성)`,
+          reason: `우측 [대국 복기 & 최선수 리포트] 탭에서 방금 둔 판의 수순별 최선수(★)와 놓친 조합을 확인해 보세요!`
+        }, r, c);
+        // Automatically switch to the Post-Game Review Report tab when the game ends!
+        switchRightTab('review');
+        selectReplayMove(moveHistory.length - 1);
+        return;
+      }
+
+      turn = turn === BLACK ? WHITE : BLACK;
+      updateAllForbidden();
+      updateTurnBadge();
+      showGuide('normal', null, r, c);
+      renderBoard();
+    }
+
+    function updateAllForbidden() {
+      forbiddenMap.clear();
+      for (let r = 0; r < N; r++) {
+        for (let c = 0; c < N; c++) {
+          if (board[r][c] === EMPTY) {
+            const info = checkForbidden(board, r, c, 0);
+            if (info) forbiddenMap.set(`${r},${c}`, info);
+          }
+        }
+      }
+    }
+
+    function checkWin(r, c, color) {
+      for (const { dr, dc } of DIRS) {
+        const len = lineLen(board, r, c, color, dr, dc);
+        if ((color === BLACK && len === 5) || (color === WHITE && len >= 5)) {
+          return getLineCells(board, r, c, color, dr, dc);
+        }
+      }
+      return null;
+    }
+
+    function triggerAIMoveIfNeeded() {
+      if (gameOver || gameMode !== 'ai' || turn === humanColor) return;
+      setTimeout(() => {
+        if (gameOver || gameMode !== 'ai' || turn === humanColor) return;
+        const aiBest = findBestMove(board, turn);
+        if (aiBest) recordAndPlaceStone(aiBest.r, aiBest.c);
+      }, 220);
+    }
+
+    function handleCellClick(r, c) {
+      if (replayIndex !== null) {
+        exitReplay();
+      }
+      if (gameOver || board[r][c] !== EMPTY) return;
+      if (gameMode === 'ai' && turn !== humanColor) return;
+
+      if (turn === BLACK) {
+        const fInfo = forbiddenMap.get(`${r},${c}`) || checkForbidden(board, r, c, 0);
+        if (fInfo) {
+          activeForbiddenHighlight = { r, c, info: fInfo };
+          switchRightTab('guide');
+          showGuide('forbidden', fInfo, r, c);
+          renderBoard();
+          return;
+        }
+      }
+
+      recordAndPlaceStone(r, c);
+      triggerAIMoveIfNeeded();
+    }
+
+    function handleCellHover(r, c) {
+      if (replayIndex !== null || gameOver || board[r][c] !== EMPTY) return;
+      const fInfo = forbiddenMap.get(`${r},${c}`);
+      if (fInfo) {
+        if (activeForbiddenHighlight && activeForbiddenHighlight.r === r && activeForbiddenHighlight.c === c) {
+          return;
+        }
+        activeForbiddenHighlight = { r, c, info: fInfo };
+        showGuide(turn === BLACK ? 'forbidden' : 'white-exploit', fInfo, r, c);
+        renderBoard();
+      } else if (activeForbiddenHighlight && turn === WHITE) {
+        activeForbiddenHighlight = null;
+        showGuide('normal');
+        renderBoard();
+      }
+    }
+
+    function getBoardCellFromEvent(evt) {
+      const svg = document.getElementById('board-svg');
+      const rect = svg.getBoundingClientRect();
+      if (!rect.width || !rect.height) return null;
+      const x = ((evt.clientX - rect.left) / rect.width) * 380;
+      const y = ((evt.clientY - rect.top) / rect.height) * 380;
+      const c = Math.round((x - thePAD) / STEP);
+      const r = Math.round((y - thePAD) / STEP);
+      if (r < 0 || r >= N || c < 0 || c >= N) return null;
+      return { r, c };
+    }
+
+    function renderReviewReport() {
+      const listEl = document.getElementById('review-list');
+      if (moveHistory.length === 0) {
+        listEl.innerHTML = `<div class="text-center text-xs text-[var(--muted-foreground)] py-4">아직 착수 기록이 없습니다.</div>`;
+        document.getElementById('stat-acc').textContent = '100%';
+        document.getElementById('stat-best').textContent = '0';
+        document.getElementById('stat-inac').textContent = '0';
+        document.getElementById('stat-blunder').textContent = '0';
+        document.getElementById('replay-step-label').textContent = '0 / 0';
+        return;
+      }
+
+      let bestCnt = 0, inacCnt = 0, blunderCnt = 0, scoreSum = 0;
+      moveHistory.forEach((m) => {
+        if (m.grade === 'BEST' || m.grade === 'GOOD') { bestCnt++; scoreSum += (m.grade === 'BEST' ? 100 : 85); }
+        else if (m.grade === 'INACCURACY') { inacCnt++; scoreSum += 50; }
+        else { blunderCnt++; scoreSum += 10; }
+      });
+      const acc = Math.round(scoreSum / moveHistory.length);
+      document.getElementById('stat-acc').textContent = `${acc}%`;
+      document.getElementById('stat-best').textContent = `${bestCnt}수`;
+      document.getElementById('stat-inac').textContent = `${inacCnt}수`;
+      document.getElementById('stat-blunder').textContent = `${blunderCnt}수`;
+
+      listEl.innerHTML = moveHistory.map((m, idx) => {
+        const isSelected = replayIndex === idx;
+        const badgeClass = m.grade === 'BEST'
+          ? 'bg-emerald-500/20 text-emerald-500'
+          : m.grade === 'GOOD'
+          ? 'bg-blue-500/20 text-blue-400'
+          : m.grade === 'INACCURACY'
+          ? 'bg-amber-500/20 text-amber-500'
+          : 'bg-red-500/25 text-red-500 font-bold';
+
+        const stoneSym = m.color === BLACK ? '●흑' : '○백';
+        const bestNote = (m.r === m.bestR && m.c === m.bestC)
+          ? `일치 (${coordStr(m.r, m.c)})`
+          : `★${coordStr(m.bestR, m.bestC)} (${m.bestTag})`;
+
+        return `
+          <div onclick="selectReplayMove(${idx})" class="flex items-center justify-between px-2 py-1.5 rounded cursor-pointer border transition-colors ${isSelected ? 'border-emerald-500 bg-emerald-500/10' : 'border-[var(--border)] bg-[var(--card)] hover:border-zinc-500'}">
+            <div class="flex items-center gap-1.5 truncate">
+              <span class="text-[var(--muted-foreground)] w-5">#${m.step}</span>
+              <span class="font-semibold">${stoneSym} ${coordStr(m.r, m.c)}</span>
+              <span class="text-[10px] text-[var(--muted-foreground)] truncate">· ${m.actualTag}</span>
+            </div>
+            <div class="flex items-center gap-1.5 shrink-0">
+              <span class="text-[10px] px-1.5 py-0.2 rounded ${badgeClass}">${m.gradeLabel}</span>
+              <span class="text-[10px] text-emerald-500">${bestNote}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function selectReplayMove(idx) {
+      if (idx < 0 || idx >= moveHistory.length) return;
+      replayIndex = idx;
+      const m = moveHistory[idx];
+      document.getElementById('replay-step-label').textContent = `${m.step} / ${moveHistory.length}`;
+      document.getElementById('board-mode-indicator').textContent = `복기 모드 (#${m.step}수 시점 · 보드 클릭 시 대국 복귀)`;
+
+      const badge = document.getElementById('detail-badge');
+      const coords = document.getElementById('detail-coords');
+      const headline = document.getElementById('detail-headline');
+      const combo = document.getElementById('detail-combo');
+
+      const stoneName = m.color === BLACK ? '●흑돌' : '○백돌';
+      badge.textContent = `#${m.step}수 ${stoneName} · ${m.gradeLabel}`;
+      badge.className = m.grade === 'BLUNDER'
+        ? 'text-[10px] font-mono-code px-2 py-0.5 rounded bg-red-600 text-white font-semibold'
+        : m.grade === 'INACCURACY'
+        ? 'text-[10px] font-mono-code px-2 py-0.5 rounded bg-amber-500/20 text-amber-500 font-semibold'
+        : 'text-[10px] font-mono-code px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-500 font-semibold';
+
+      coords.textContent = `실제: ${coordStr(m.r, m.c)} / 추천 최선수: ★${coordStr(m.bestR, m.bestC)}`;
+      headline.textContent = (m.r === m.bestR && m.c === m.bestC)
+        ? `[최선수 적중] ${coordStr(m.r, m.c)} — ${m.bestTag}`
+        : `[더 좋은 수 제안] ${coordStr(m.r, m.c)} 대신 ★${coordStr(m.bestR, m.bestC)} (${m.bestTag})`;
+      combo.textContent = m.whyBetter;
+
+      renderReviewReport();
+      renderBoard();
+    }
+
+    function stepReplay(delta) {
+      if (moveHistory.length === 0) return;
+      const cur = replayIndex === null ? moveHistory.length - 1 : replayIndex;
+      const next = Math.max(0, Math.min(moveHistory.length - 1, cur + delta));
+      selectReplayMove(next);
+    }
+
+    function exitReplay() {
+      replayIndex = null;
+      document.getElementById('board-mode-indicator').textContent = '실시간 대국 모드';
+      document.getElementById('replay-step-label').textContent = `${moveHistory.length} / ${moveHistory.length}`;
+      renderReviewReport();
+      renderBoard();
+    }
+
+    function switchRightTab(tab) {
+      activeRightTab = tab;
+      document.getElementById('panel-guide').classList.toggle('hidden', tab !== 'guide');
+      document.getElementById('panel-review').classList.toggle('hidden', tab !== 'review');
+      document.getElementById('tab-guide-btn').className = tab === 'guide'
+        ? 'flex-1 py-1 text-xs font-semibold rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] transition-all'
+        : 'flex-1 py-1 text-xs font-semibold rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all';
+      document.getElementById('tab-review-btn').className = tab === 'review'
+        ? 'flex-1 py-1 text-xs font-semibold rounded-md bg-[var(--primary)] text-[var(--primary-foreground)] transition-all'
+        : 'flex-1 py-1 text-xs font-semibold rounded-md text-[var(--muted-foreground)] hover:text-[var(--foreground)] transition-all';
+
+      if (tab === 'review' && moveHistory.length > 0 && replayIndex === null) {
+        // Highlight either the biggest blunder/inaccuracy or the final move
+        const blunderIdx = moveHistory.findIndex((m) => m.grade === 'BLUNDER' || m.grade === 'INACCURACY');
+        selectReplayMove(blunderIdx >= 0 ? blunderIdx : moveHistory.length - 1);
+      } else if (tab === 'guide') {
+        exitReplay();
+      }
+    }
+
+    function showGuide(state, info = null, r = null, c = null) {
+      const box = document.getElementById('guide-box');
+      const tag = document.getElementById('guide-tag');
+      const coord = document.getElementById('coord-label');
+      const title = document.getElementById('guide-title');
+      const desc = document.getElementById('guide-desc');
+      const tip = document.getElementById('guide-tip');
+
+      if (state === 'forbidden' && info) {
+        box.className = 'rounded-lg border-2 border-red-500 bg-red-500/10 p-3 transition-all';
+        tag.className = 'text-[10px] font-mono-code uppercase tracking-wider px-2 py-0.5 rounded bg-red-600 text-white font-semibold';
+        tag.textContent = `금수 착수 차단됨 (${info.type})`;
+        coord.textContent = `좌표: ${coordStr(r, c)}`;
+        title.textContent = info.title;
+        desc.innerHTML = `<span class="text-[var(--foreground)] font-medium">${info.reason}</span>`;
+        tip.innerHTML = `<span class="text-amber-500 font-semibold">${info.solution}</span>`;
+      } else if (state === 'white-exploit' && info) {
+        box.className = 'rounded-lg border-2 border-blue-500 bg-blue-500/10 p-3 transition-all';
+        tag.className = 'text-[10px] font-mono-code uppercase tracking-wider px-2 py-0.5 rounded bg-blue-600 text-white font-semibold';
+        tag.textContent = `백돌 전술 팁 · 흑의 ${info.type} 금수 자리`;
+        coord.textContent = `좌표: ${coordStr(r, c)}`;
+        title.textContent = `백돌은 이 자리(${coordStr(r, c)})에 금수 제한 없이 둘 수 있습니다!`;
+        desc.innerHTML = `<span class="text-[var(--foreground)] font-medium">흑에게는 ${info.type} 금수여서 둘 수 없는 자리지만, 백돌은 금수가 전혀 없습니다. 클릭하면 백돌이 이 급소를 차지해 흑의 양쪽 공격 줄기를 한 번에 끊습니다.</span>`;
+        tip.innerHTML = `<span class="text-blue-400 font-semibold">전술 팁: 급소를 바로 막거나, 반대로 다른 곳에서 4를 쳐서 흑이 어쩔 수 없이 이 금수 자리에 두도록 유도(금수 유도승)할 수도 있습니다!</span>`;
+      } else if (state === 'win') {
+        box.className = 'rounded-lg border-2 border-emerald-500 bg-emerald-500/10 p-3 transition-all';
+        tag.className = 'text-[10px] font-mono-code uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-600 text-white font-semibold';
+        tag.textContent = 'GAME OVER · 복기 리포트 생성됨';
+        coord.textContent = `결정수: ${coordStr(r, c)}`;
+        title.textContent = info.title;
+        desc.textContent = info.reason;
+        tip.textContent = '우측 [대국 복기 & 최선수 리포트] 탭에서 수순별 더 좋았던 수(★)를 확인하세요.';
+      } else {
+        box.className = 'rounded-lg border border-[var(--border)] bg-[var(--background)] p-3 transition-all';
+        tag.className = 'text-[10px] font-mono-code uppercase tracking-wider px-2 py-0.5 rounded bg-emerald-500/15 text-emerald-500 font-semibold';
+        const myStoneLabel = humanColor === BLACK ? '내 돌: ●흑(선공)' : '내 돌: ○백(후공)';
+        tag.textContent = `${myStoneLabel} · 현재 흑 금수: ${forbiddenMap.size}곳`;
+        coord.textContent = r !== null ? `방금 둔 수: ${coordStr(r, c)}` : '15×15 표준 보드';
+        title.textContent = turn === BLACK
+          ? '● 흑돌 차례입니다. 금수 자리(33, 44, 6+)는 착수가 차단되고 가이드가 표시됩니다.'
+          : '○ 백돌 차례입니다. 백돌은 3-3, 4-4, 장목 금수 제한 없이 어디든 둘 수 있습니다!';
+        desc.innerHTML = '상단에서 언제든 <strong>[내 돌: ●흑 / ○백]</strong>을 전환하여 선공(금수 돌파) 또는 후공(금수 역이용)을 연습할 수 있습니다.';
+        tip.textContent = 'TIP: 대국이 끝나거나 상단 [대국 복기 & 최선수 리포트] 탭을 누르면 언제든 복기할 수 있습니다.';
+      }
+    }
+
+    function updateTurnBadge() {
+      const badge = document.getElementById('turn-badge');
+      if (gameOver) {
+        badge.className = 'px-2 py-0.5 rounded-full text-[11px] font-mono-code font-medium bg-emerald-600 text-white';
+        badge.textContent = '★ 대국 종료 (복기 모드)';
+      } else if (turn === BLACK) {
+        badge.className = 'px-2 py-0.5 rounded-full text-[11px] font-mono-code font-medium bg-zinc-900 text-white border border-zinc-700';
+        badge.textContent = gameMode === 'ai'
+          ? (humanColor === BLACK ? '● 흑돌 차례 (나 · 금수 적용)' : '● 흑돌 차례 (AI 생각중...)')
+          : '● 흑돌 차례 (금수 적용)';
+      } else {
+        badge.className = 'px-2 py-0.5 rounded-full text-[11px] font-mono-code font-medium bg-white text-zinc-900 border border-zinc-400';
+        badge.textContent = gameMode === 'ai'
+          ? (humanColor === WHITE ? '○ 백돌 차례 (나 · 금수 없음)' : '○ 백돌 차례 (AI 생각중...)')
+          : '○ 백돌 차례 (금수 없음)';
+      }
+    }
+
+    function renderBoard() {
+      const svg = document.getElementById('board-svg');
+      const parts = [];
+      const activeBoard = replayIndex !== null ? moveHistory[replayIndex].boardSnapshot : board;
+      const replayMove = replayIndex !== null ? moveHistory[replayIndex] : null;
+
+      // 1. Grid lines + Coordinate labels
+      for (let i = 0; i < N; i++) {
+        const pos = thePAD + i * STEP;
+        parts.push(`<line x1="${thePAD}" y1="${pos}" x2="${thePAD + 14 * STEP}" y2="${pos}" stroke="#785A28" stroke-width="1" />`);
+        parts.push(`<line x1="${pos}" y1="${thePAD}" x2="${pos}" y2="${thePAD + 14 * STEP}" stroke="#785A28" stroke-width="1" />`);
+        // Tiny coordinate labels along top & left
+        parts.push(`<text x="${pos}" y="11" text-anchor="middle" fill="#5C4018" font-size="8" font-family="monospace">${String.fromCharCode(65 + i)}</text>`);
+        parts.push(`<text x="9" y="${pos + 3}" text-anchor="middle" fill="#5C4018" font-size="8" font-family="monospace">${15 - i}</text>`);
+      }
+
+      // 2. Star points
+      [[3, 3], [3, 11], [7, 7], [11, 3], [11, 11]].forEach(([r, c]) => {
+        parts.push(`<circle cx="${thePAD + c * STEP}" cy="${thePAD + r * STEP}" r="2.8" fill="#5C4018" />`);
+      });
+
+      // 3. Forbidden open-extension spots (when in live guide mode)
+      if (replayIndex === null && activeForbiddenHighlight) {
+        activeForbiddenHighlight.info.spots.forEach(([sr, sc]) => {
+          const cx = thePAD + sc * STEP, cy = thePAD + sr * STEP;
+          parts.push(`<circle cx="${cx}" cy="${cy}" r="9" fill="rgba(239,68,68,0.18)" stroke="#DC2626" stroke-width="1.5" stroke-dasharray="3,2" />`);
+        });
+      }
+
+      // 4. Placed stones (with move numbers in Replay Mode!)
+      const lastMove = replayIndex !== null ? replayMove : moveHistory[moveHistory.length - 1];
+      const winSet = new Set(replayIndex === null ? winCells.map(([r, c]) => `${r},${c}`) : []);
+      const causeSet = new Set(
+        replayIndex !== null
+          ? (replayMove.bestComboCells || []).map(([r, c]) => `${r},${c}`)
+          : activeForbiddenHighlight
+          ? activeForbiddenHighlight.info.stones.map(([r, c]) => `${r},${c}`)
+          : []
+      );
+
+      // Map coordinates to step numbers up to current view
+      const stepNumberMap = new Map();
+      const maxStepIdx = replayIndex !== null ? replayIndex : moveHistory.length - 1;
+      for (let i = 0; i <= maxStepIdx; i++) {
+        const m = moveHistory[i];
+        stepNumberMap.set(`${m.r},${m.c}`, m.step);
+      }
+
+      for (let r = 0; r < N; r++) {
+        for (let c = 0; c < N; c++) {
+          if (activeBoard[r][c] === EMPTY) continue;
+          const cx = thePAD + c * STEP, cy = thePAD + r * STEP;
+          const isBlack = activeBoard[r][c] === BLACK;
+          const fill = isBlack ? '#141414' : '#FAFAFA';
+          const stroke = isBlack ? '#000000' : '#777777';
+          parts.push(`<circle cx="${cx}" cy="${cy}" r="10.3" fill="${fill}" stroke="${stroke}" stroke-width="1.2" />`);
+
+          const stepNo = stepNumberMap.get(`${r},${c}`);
+          if (replayIndex !== null && stepNo) {
+            parts.push(`<text x="${cx}" y="${cy + 3.2}" text-anchor="middle" fill="${isBlack ? '#FFFFFF' : '#111111'}" font-size="8.5" font-weight="700" font-family="monospace">${stepNo}</text>`);
+          } else if (lastMove && lastMove.r === r && lastMove.c === c) {
+            parts.push(`<circle cx="${cx}" cy="${cy}" r="3.2" fill="${isBlack ? '#F59E0B' : '#2563EB'}" />`);
+          }
+
+          if (lastMove && lastMove.r === r && lastMove.c === c) {
+            parts.push(`<circle cx="${cx}" cy="${cy}" r="11.2" fill="none" stroke="${replayIndex !== null && (replayMove.grade === 'BLUNDER' || replayMove.grade === 'INACCURACY') ? '#EF4444' : '#3B82F6'}" stroke-width="2.2" />`);
+          }
+          if (winSet.has(`${r},${c}`)) {
+            parts.push(`<circle cx="${cx}" cy="${cy}" r="11.2" fill="none" stroke="#10B981" stroke-width="2.5" />`);
+          }
+          if (causeSet.has(`${r},${c}`)) {
+            parts.push(`<circle class="pulse-marker" cx="${cx}" cy="${cy}" r="11.4" fill="none" stroke="#F59E0B" stroke-width="2.2" stroke-dasharray="3,2" />`);
+          }
+        }
+      }
+
+      // 5. In Replay Mode: Show Recommended BEST MOVE (★ Green Marker) if different from actual, or confirm Best Move
+      if (replayMove) {
+        const bx = thePAD + replayMove.bestC * STEP, by = thePAD + replayMove.bestR * STEP;
+        if (replayMove.r !== replayMove.bestR || replayMove.c !== replayMove.bestC) {
+          parts.push(`
+            <g class="pulse-marker" pointer-events="none">
+              <circle cx="${bx}" cy="${by}" r="10.8" fill="#10B981" stroke="#FFFFFF" stroke-width="1.5" />
+              <text x="${bx}" y="${by + 3.2}" text-anchor="middle" fill="#FFFFFF" font-size="8" font-weight="700" font-family="monospace">★최선</text>
+            </g>
+          `);
+        }
+      }
+
+      // 6. Live Mode Forbidden Markers (Red blocked marker on Black turn, Dashed Blue 'playable for White' marker on White turn)
+      if (replayIndex === null && !gameOver && (showHints || activeForbiddenHighlight)) {
+        forbiddenMap.forEach((info, key) => {
+          const [r, c] = key.split(',').map(Number);
+          const isFocused = activeForbiddenHighlight && activeForbiddenHighlight.r === r && activeForbiddenHighlight.c === c;
+          if (!showHints && !isFocused) return;
+          const cx = thePAD + c * STEP, cy = thePAD + r * STEP;
+          const radius = isFocused ? 11 : 8.5;
+          if (turn === BLACK) {
+            const bg = isFocused ? '#DC2626' : 'rgba(220, 38, 38, 0.88)';
+            parts.push(`
+              <g class="${isFocused ? 'pulse-marker' : ''}" pointer-events="none">
+                <circle cx="${cx}" cy="${cy}" r="${radius}" fill="${bg}" stroke="#FFFFFF" stroke-width="1.2" />
+                <text x="${cx}" y="${cy + 3.2}" text-anchor="middle" fill="#FFFFFF" font-size="8.5" font-weight="700" font-family="monospace">${info.badge}</text>
+              </g>
+            `);
+          } else {
+            const bg = isFocused ? 'rgba(37, 99, 235, 0.92)' : 'rgba(220, 38, 38, 0.45)';
+            const stroke = isFocused ? '#FFFFFF' : '#DC2626';
+            parts.push(`
+              <g class="${isFocused ? 'pulse-marker' : ''}" pointer-events="none">
+                <circle cx="${cx}" cy="${cy}" r="${radius}" fill="${bg}" stroke="${stroke}" stroke-width="1.4" stroke-dasharray="${isFocused ? 'none' : '2,2'}" />
+                <text x="${cx}" y="${cy + 3.2}" text-anchor="middle" fill="#FFFFFF" font-size="8" font-weight="700" font-family="monospace">${isFocused ? '착수가능' : info.badge}</text>
+              </g>
+            `);
+          }
+        });
+      }
+
+      svg.innerHTML = parts.join('');
+    }
+
+    function setHumanColor(color) {
+      humanColor = color;
+      document.getElementById('color-black').className = color === BLACK
+        ? 'px-2 py-0.5 rounded font-medium bg-zinc-900 text-white'
+        : 'px-2 py-0.5 rounded font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)]';
+      document.getElementById('color-white').className = color === WHITE
+        ? 'px-2 py-0.5 rounded font-medium bg-white text-zinc-900 border border-zinc-400 shadow-sm'
+        : 'px-2 py-0.5 rounded font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)]';
+
+      if (gameMode === 'pvp') {
+        // In 2-player / experiment mode, immediately switch the current active turn so the user can test placing that stone color right away!
+        if (replayIndex !== null) exitReplay();
+        turn = color;
+        activeForbiddenHighlight = null;
+        updateTurnBadge();
+        showGuide('normal');
+        renderBoard();
+        return;
+      }
+
+      // In AI mode: if the game was over or in replay, start a fresh game with the chosen color; otherwise let AI play if it's now AI's turn
+      if (gameOver || replayIndex !== null || moveHistory.length === 0) {
+        resetGame(true);
+      } else {
+        updateTurnBadge();
+        showGuide('normal');
+        triggerAIMoveIfNeeded();
+      }
+    }
+
+    function setGameMode(mode) {
+      gameMode = mode;
+      document.getElementById('mode-ai').className = mode === 'ai'
+        ? 'px-2 py-0.5 rounded font-medium bg-[var(--primary)] text-[var(--primary-foreground)]'
+        : 'px-2 py-0.5 rounded font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)]';
+      document.getElementById('mode-pvp').className = mode === 'pvp'
+        ? 'px-2 py-0.5 rounded font-medium bg-[var(--primary)] text-[var(--primary-foreground)]'
+        : 'px-2 py-0.5 rounded font-medium text-[var(--muted-foreground)] hover:text-[var(--foreground)]';
+      updateTurnBadge();
+      if (mode === 'ai' && !gameOver && replayIndex === null) {
+        triggerAIMoveIfNeeded();
+      }
+    }
+
+    function toggleHints() {
+      showHints = !showHints;
+      document.getElementById('toggle-hint-btn').textContent = `금수표시: ${showHints ? 'ON' : 'OFF'}`;
+      renderBoard();
+    }
+
+    function undoMove() {
+      if (moveHistory.length === 0) return;
+      gameOver = false;
+      winCells = [];
+      replayIndex = null;
+      activeForbiddenHighlight = null;
+      const steps = (gameMode === 'ai' && turn === humanColor && moveHistory.length >= 2) ? 2 : 1;
+      for (let i = 0; i < steps && moveHistory.length > 0; i++) {
+        const last = moveHistory.pop();
+        board[last.r][last.c] = EMPTY;
+        turn = last.color;
+      }
+      document.getElementById('review-count-badge').textContent = `${moveHistory.length}수`;
+      updateAllForbidden();
+      updateTurnBadge();
+      renderReviewReport();
+      showGuide('normal');
+      renderBoard();
+      triggerAIMoveIfNeeded();
+    }
+
+    function resetGame(autoStartAI = true) {
+      board = Array.from({ length: N }, () => Array(N).fill(EMPTY));
+      turn = BLACK;
+      gameOver = false;
+      moveHistory = [];
+      winCells = [];
+      replayIndex = null;
+      activeForbiddenHighlight = null;
+      document.getElementById('review-count-badge').textContent = '0수';
+      updateAllForbidden();
+      updateTurnBadge();
+      renderReviewReport();
+      switchRightTab('guide');
+      showGuide('normal');
+      renderBoard();
+      if (autoStartAI) {
+        triggerAIMoveIfNeeded();
+      }
+    }
+
+    function loadPreset(type) {
+      resetGame(false);
+      if (type === 'sample-review') {
+        // Play a full 11-move tactical game where White makes a key blunder on move 8 (missing Black's 4-3 setup) and Black wins via a 4-3 combination!
+        const seq = [
+          [7, 7], // 1. B H8 (Center)
+          [6, 7], // 2. W H9
+          [7, 8], // 3. B I8
+          [7, 6], // 4. W G8 (Blocks horizontal left)
+          [8, 8], // 5. B I7 (Builds diagonal + vertical)
+          [6, 6], // 6. W G9
+          [7, 9], // 7. B J8 (Creates Horizontal 3 + threatens H6/J6)
+          [5, 5], // 8. W F10 (BLUNDER! Should have blocked Black's 4-3 key spot at I6 (9,8) or K8 (7,10))
+          [9, 8], // 9. B I6 (4-3 / Open-4 winning attack!)
+          [10, 8], // 10. W I5
+          [7, 10]  // 11. B K8 -> continues or let's make an exact 5-in-a-row win!
+        ];
+        // Let's craft an exact 9-move game ending in 5-in-a-row with a clear blunder and 4-3 lesson:
+        const gameSeq = [
+          [7, 7], // #1 흑 H8 (천원 첫수)
+          [6, 7], // #2 백 H9 (중앙 견제)
+          [7, 8], // #3 흑 I8 (가로 연결)
+          [6, 8], // #4 백 I9 (상단 압박)
+          [8, 7], // #5 흑 H7 (세로+대각선 복선 포석)
+          [5, 5], // #6 백 F10 (▲아쉬운 수: 흑의 4-3 급소인 I7(8,8) 길목을 견제하지 않음)
+          [8, 8], // #7 흑 I7 (★최선수: 우하향 대각선 + 가로/세로 열린 3 복선 형성)
+          [5, 6], // #8 백 G10 (❓결정적 실착: 흑의 가로·세로 공격 줄기를 방치함)
+          [9, 7], // #9 흑 H6 (열린 4 공격!)
+          [4, 7], // #10 백 H11 (뒤늦은 무의미한 행마 — H5(10,7)를 막지 않음)
+          [10, 7] // #11 흑 H5 (5목 완성 승리!)
+        ];
+        for (const [r, c] of gameSeq) {
+          recordAndPlaceStone(r, c);
+        }
+        // Select Move #8 (White's Blunder) so the user immediately sees the comparison on the board!
+        switchRightTab('review');
+        selectReplayMove(7);
+        return;
+      }
+
+      const putRaw = (r, c, color) => { board[r][c] = color; };
+      if (type === '33-basic') {
+        putRaw(7, 8, BLACK); putRaw(5, 5, WHITE);
+        putRaw(7, 9, BLACK); putRaw(5, 6, WHITE);
+        putRaw(8, 7, BLACK); putRaw(10, 10, WHITE);
+        putRaw(9, 7, BLACK); putRaw(10, 11, WHITE);
+      } else if (type === '33-jump') {
+        putRaw(7, 9, BLACK); putRaw(4, 4, WHITE);
+        putRaw(7, 10, BLACK); putRaw(4, 5, WHITE);
+        putRaw(9, 7, BLACK); putRaw(11, 11, WHITE);
+        putRaw(10, 7, BLACK); putRaw(11, 12, WHITE);
+      } else if (type === '44-basic') {
+        putRaw(7, 8, BLACK); putRaw(4, 4, WHITE);
+        putRaw(7, 9, BLACK); putRaw(4, 5, WHITE);
+        putRaw(7, 10, BLACK); putRaw(4, 6, WHITE);
+        putRaw(8, 7, BLACK); putRaw(11, 10, WHITE);
+        putRaw(9, 7, BLACK); putRaw(11, 11, WHITE);
+        putRaw(10, 7, BLACK); putRaw(11, 12, WHITE);
+      } else if (type === 'overline-6') {
+        putRaw(7, 5, BLACK); putRaw(4, 4, WHITE);
+        putRaw(7, 6, BLACK); putRaw(4, 5, WHITE);
+        putRaw(7, 8, BLACK); putRaw(4, 6, WHITE);
+        putRaw(7, 9, BLACK); putRaw(10, 10, WHITE);
+        putRaw(7, 10, BLACK); putRaw(10, 11, WHITE);
+      }
+      turn = humanColor;
+      updateAllForbidden();
+      updateTurnBadge();
+      const fInfo = forbiddenMap.get('7,7');
+      activeForbiddenHighlight = { r: 7, c: 7, info: fInfo };
+      showGuide(turn === BLACK ? 'forbidden' : 'white-exploit', fInfo, 7, 7);
+      renderBoard();
+    }
+
+    // Boot directly with the sample review or preset 1? Let's boot with sample-review so the user immediately sees the new Post-Game Review & Best Move feature in action!
+    loadPreset('sample-review');
+  </script>
+</body>
+</html>

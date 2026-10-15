@@ -1,6 +1,6 @@
-# 🛡️ Antigravity Core Engineering Rules (1-2-3-4 Protocol)
+# 🚀 Antigravity Step Up Engineering Rules (1-2-3-4 Protocol)
 
-All coding, architecture, and tool development in this workspace must strictly follow the **1-2-3-4 Core Engineering Protocol**:
+All coding, architecture, and tool development in this workspace must strictly follow the **Step Up Engineering Protocol**:
 
 1. **Pillar 1 (Addy Osmani)**: Never jump into code without stating a concise `/spec` and `/plan`. Clarify requirements and break down tasks first.
 2. **Pillar 4 (Claude Scaffold)**: Maintain clean, structured modular architecture. Avoid monolithic single-file dumps where separation of concerns is needed.

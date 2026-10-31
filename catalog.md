@@ -1,4 +1,4 @@
-# 🗂️ Antigravity 개인 스킬 보관소 색인표 (199선)
+# 🗂️ Antigravity 개인 스킬 보관소 색인표 (201선)
 
 > **이 색인표의 목적**:  
 > 수많은 스킬과 도구를 Antigravity에 한꺼번에 전부 등록하면 **컨텍스트 토큰이 과도하게 낭비되고 성능이 저하**됩니다.  
@@ -15,7 +15,7 @@
 6. [💻 개발자 생산성, 보안 & MCP](#6--개발자-생산성-보안--mcp-devtools--security)
 7. [🔍 글로벌 스킬·MCP 통합 검색 허브](#7--글로벌-스킬mcp-통합-검색-허브-skill--mcp-hubs)
 8. [🔬 앱·웹 클론, UI 재구현 & 역공학·바이너리 분석](#8--앱웹-클론-ui-재구현--역공학바이너리-분석-cloning-ui-reconstruction--reverse-engineering)
-9. [🎓 에이전트 마스터리, 실전 플레이북 & 학술 프레젠테이션](#9--에이전트-마스터리-실전-플레이북--학술-프레젠테이션-agent-mastery-playbooks--academic-presentations)
+9. [🎓 에이전트 마스터리, 실전 플레이북 & 학술·과학 연구](#9--에이전트-마스터리-실전-플레이북--학술과학-연구-agent-mastery-playbooks--academicscientific-research)
 
 ---
 ### 1. 🛠️ 핵심 코딩 & 아키텍처 스킬 (Core Agent Skills)
@@ -295,14 +295,16 @@
 
 ---
 
-### 9. 🎓 에이전트 마스터리, 실전 플레이북 & 학술 프레젠테이션 (Agent Mastery, Playbooks & Academic Presentations)
-> Claude Code 입문 마스터 교재, 창시자 실전 룰 플레이북 및 엄격한 학술·연구용 프레젠테이션 스킬
+### 9. 🎓 에이전트 마스터리, 실전 플레이북 & 학술·과학 연구 (Agent Mastery, Playbooks & Academic/Scientific Research)
+> Claude Code 입문 마스터 교재, 추론 노력 자동화 플러그인, 창시자 실전 룰 및 학술 논문·과학 연구(바이오/신약) 에이전트 스킬
 
 | 번호 | 스킬/프로젝트 | 유형 | 주요 용도 및 추천 사용 시점 |
 | :---: | :--- | :---: | :--- |
 | 197 | [SKZL-AI/boris-cherny-claude-code-playbook](https://github.com/SKZL-AI/boris-cherny-claude-code-playbook) | `[Rule/Playbook]` | **Claude Code 창시자 보리스 체르니(Boris Cherny)의 4대 실전 골든 룰**: 1) 계획 모드로 시작(Shift+Tab 2회로 완벽한 계획 수립 후 실행), 2) 다중 세션 병렬화(5개 이상 터미널 탭 동시 구동 및 작업별 폴더 격리), 3) 자가 학습 `CLAUDE.md` 루프(실수 수정 시 즉시 규칙으로 기록하여 재발 방지), 4) 서브에이전트 적극 위임(대규모 작업 분할로 메인 대화창 청결 유지) |
 | 198 | [luongnv89/claude-howto](https://github.com/luongnv89/claude-howto) | `[Skill/Course]` | **(스타 4.4만 / Claude How-To)** Claude Code를 주말 2시간 30분 만에 마스터하는 10단계 실전 교재 & 설정 팩 (Slash Commands, Memory, Checkpoints, CLI, Skills, Hooks, MCP, Subagents, Advanced, Plugins). 동작 원리 다이어그램, 복사형 설정 템플릿 및 대화형 단원 퀴즈 제공 (MIT 라이선스) |
 | 199 | [gabberflast/academic-pptx-skill](https://github.com/gabberflast/academic-pptx-skill) | `[Skill/Academic]` | **Academic PPTX Skill**: AI의 화려하고 텅 빈 corporate 스타일 대신 학술적 엄밀성을 갖춘 커뮤니케이션 최우선 슬라이드 생성. Action Title(결론 완전문 제목), 논리 전개 구조(상황-문제-해결), Ghost Deck Test(제목만 읽어도 스토리 완성), 슬라이드당 1개 차트 주석 및 학술 인용/References 표준 준수. 학회 발표, 논문 디펜스, 연구비 제안서 브리핑에 특화 |
+| 200 | [K-Dense-AI/scientific-agent-skills](https://github.com/K-Dense-AI/scientific-agent-skills) | `[Skill/Science]` | **(170+ 검증 스킬 / 100+ 과학 DB)** **Scientific Agent Skills**: AI 에이전트를 생물학, 화학, 생명정보학, 유전체학, 신약 개발, 재료과학, 임상 연구 전문 연구원으로 전환하는 스킬 팩. 검증된 과학 연구 프로토콜과 100+ 글로벌 과학 데이터베이스 연동 지원 (Cursor, Claude Code, Antigravity 호환, `npx skills add K-Dense-AI/scientific-agent-skills`) |
+| 201 | [HeyCubit/effortless](https://github.com/HeyCubit/effortless) | `[Plugin/Effort]` | **(비용 21% 절감) Effortless**: 질문 난이도에 맞춰 Claude Code의 사고/추론 노력 강도(Thinking Effort: Low/Medium/High)와 모델 설정을 전자동 조절하는 플러그인. 응답 품질을 유지하면서 비용 21% 절감, 프롬프트 캐싱 모니터링, 컨텍스트 과부하 경고 및 원클릭 대화 압축/새 세션 스마트 핸드오프 지원 (`claude plugin install effortless@effortless`) |
 
 ---
 

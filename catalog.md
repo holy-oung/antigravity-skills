@@ -313,7 +313,7 @@
 특정 프로젝트 폴더(예: `C:\dev\my-app`)에서 작업할 때 안티그래비티에게 이렇게 말씀하시면 됩니다:
 
 ```markdown
-"내 skill-vault 색인표(skills-index.md)를 참고해서,
+"내 skill-vault 색인표(catalog.md)를 참고해서,
 [스킬이름] 스킬을 현재 프로젝트 폴더의 .agents/skills/ 에 복사해서 세팅해줘."
 ```
 

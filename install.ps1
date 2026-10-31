@@ -29,5 +29,5 @@ Write-Host "  2. Matt Pocock   : Zero-any 엄격한 타입 무결성 & 도메인
 Write-Host "  3. Ponytail      : YAGNI 70% 코드 삭감, 불필요한 의존성 0개"
 Write-Host "  4. Claude Scaffold: 모듈형 클린 아키텍처"
 Write-Host ""
-Write-Host "📚 스킬 인덱스 위치: $CurrentDir\skills-index.md" -ForegroundColor Cyan
+Write-Host "📚 스킬 인덱스 위치: $CurrentDir\..\skills-index.md (북마크: $CurrentDir\catalog.md)" -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan

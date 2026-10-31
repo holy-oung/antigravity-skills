@@ -10,7 +10,7 @@ description: >
 
 # 📚 Antigravity 개인 스킬 보관소 & JIT 스킬 버틀러 가이드
 
-개인 스킬 보관소(Skill Vault, 201선)를 총괄하며, 사용자 요청 시 스마트하게 개입·수행·복귀하는 **JIT 스킬 버틀러(Skill Butler)** 운영 지침입니다.
+개인 스킬 보관소(Skill Vault)를 총괄하며, 사용자 요청 시 스마트하게 개입·수행·복귀하는 **JIT 스킬 버틀러(Skill Butler)** 운영 지침입니다.
 
 ---
 
@@ -29,30 +29,9 @@ description: >
 
 ---
 
-### 2단계: 초경량 대표 도메인 라우팅 맵 (Fast-Path Routing Map)
-전체 201종 색인 파일을 매번 읽지 않고, 아래 대표 스킬 맵으로 0.1초 만에 즉시 라우팅합니다:
-
-| 도메인 | 대표 추천 스킬 | 보관소 위치 | 주요 용도 |
-| :--- | :--- | :--- | :--- |
-| **🌐 웹 CLI/MCP & 브라우징** | `hycli` (#76), `agent-reach` (#73) | `04-browser-scraping/` | 임의의 웹사이트를 타입 CLI/MCP 도구로 자동 변환, 세션 암호화 연동 |
-| **🇰🇷 관공서/HWP/PDF** | `kordoc` (#29), `auto-hwp` (#25) | `02-korean-doc-automation/` | HWP/HWPX/PDF 파싱, 신구대조, 공문서 양식 채우기 |
-| **🎨 안티슬롭 UI/디자인** | `taste-skill` (#52), `ui-ux-pro-max` (#49) | `03-media-creative/` | AI 특유의 밋밋한 UI 제거, 미니멀/하이엔드 비주얼 톤 주입 |
-| **🎬 영상/쇼츠/유튜브** | `autoclip` (#54), `hypit` (#51) | `03-media-creative/` | 쇼츠 컷편집, 영상 스크립트 복제, 자막·댓글 스크래핑 |
-| **🛡️ 보안/모의해킹** | `strix` (#107), `trailofbits-skills` (#141) | `06-developer-tools-mcp/` | 침투 테스트, 취약점 패치, 스마트 컨트랙트 감사 |
-| **🔬 앱/웹 클론 & UI 재구현** | `remaster` (#159), `clone-any-website` (#163), `screenshot-to-html` (#175) | `catalog.md` (#8) | 타깃 앱/웹 UI·애니메이션 복제, 스크린샷 코드 역생성, 디자인 추출 |
-| **⚙️ APK/바이너리 역공학 & Ghidra** | `rea` (#157), `android-re` (#182), `ghidra-rpc` (#191) | `catalog.md` (#8) | APK/Flutter 디컴파일, 바이너리 정적/동적 분석, Ghidra RPC 자동화 |
-| **🔍 검색 최적화 (SEO/AEO)** | `fire-your-seo-agency` (#112) | `06-developer-tools-mcp/` | 네이버(NEO), 구글(SEO), AI 검색(GEO/LLMO) 가시성 극대화 |
-| **🧠 토큰 압축 & 아키맵** | `headroom` (#96), `archify` (#97) | `05-agent-memory-harness/` | 컨텍스트 60~95% 무손실 압축, 코드베이스 대화형 지도 생성 |
-| **📱 모바일/PC OS 제어** | `artemis` (#110), `PC-CONTROL-MCP` (#109) | `06-developer-tools-mcp/` | 스마트폰 앱 자동 제어, OS 마우스/키보드 자동화 |
-| **🎮 게임 스튜디오/3D** | `claude-code-game-studios` (#16), `threejs-game-skills` (#22) | `01-core-skills/` | 49개 에이전트 게임 개발 루프, Three.js 3D 파이프라인 |
-| **📚 전자책/출판 자동화** | `bookforge` (#27), `translate-book` (#28) | `02-korean-doc-automation/` | 상업 출판급 국문 PDF 생성, 외국 전문 서적 번역 |
-| **🤖 대규모 에이전트 팩** | `agency-agents` (#20), `gstack` (#15) | `01-core-skills/` | 18개 부서 230명 전문 AI 직원 투입, 역할별 인지 모드 |
-| **🎓 학술 발표 & PPTX** | `academic-pptx-skill` (#199) | `catalog.md` (#9) | 학회 발표·논문 디펜스용 결론 중심 엄격한 학술 슬라이드 생성 |
-| **📘 Claude Code 마스터리** | `boris-cherny-playbook` (#197), `claude-howto` (#198) | `catalog.md` (#9) | 창시자 4대 골든 룰, 10단원 2.5시간 실전 튜토리얼 & 설정 템플릿 |
-| **🧬 과학/바이오 & 신약개발** | `scientific-agent-skills` (#200) | `catalog.md` (#9) | 생물·화학·유전체학·신약 개발 170+ 전문 연구 스킬 & 100+ 과학 DB 연동 |
-| **⚡ 추론 비용 & 노력 최적화** | `effortless` (#201) | `catalog.md` (#9) | 질문별 추론 강도(Low/High) 자동 선별로 비용 21% 절감, 원클릭 대화 압축 |
-
-> **희귀 전문 작업 안내**: 위 대표 매핑에 없는 특수 작업일 때만 `C:\Users\Han\Documents\antigravity\skills\catalog.md` 전체 색인을 1회 열람하여 최적 스킬을 찾습니다.
+### 2단계: 루트 색인으로 라우팅 (Fast-Path)
+1. `C:\Users\Han\Documents\antigravity\skills-index.md`를 연다. 보관소에 실제로 있는 팩만 한 줄씩 적혀 있다(약 30줄).
+2. 거기 없으면 `C:\Users\Han\Documents\antigravity\skills\catalog.md`(북마크 201선)에서 찾고, "보관소에 없음, GitHub에서 받아야 함"이라고 알린다.
 
 ---
 

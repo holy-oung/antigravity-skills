@@ -1,7 +1,7 @@
 # 🗃️ Antigravity 개인 스킬 보관소 (Skill Vault) & 1-2-3-4 거버넌스
 
 > **Antigravity Official Skill Vault & Universal Multi-Agent Engineering Governance**  
-> 156선 통합 색인표 + 4대 코어 엔지니어링 헌법(`GEMINI.md`) + ECC 292종 + Google 137종 공식 스킬을 탑재한 개인 스킬 보관소입니다.
+> 199선 통합 색인표 + 4대 코어 엔지니어링 헌법(`GEMINI.md`) + ECC 292종 + Google 137종 공식 스킬을 탑재한 개인 스킬 보관소입니다.
 
 ---
 
@@ -48,7 +48,7 @@ chmod +x install.sh && ./install.sh
 antigravity-skills/
 ├── 📄 GEMINI.md                 # Antigravity 4대 코어 헌법 (최우선 사용자 규칙)
 ├── 📄 AGENTS.md / CLAUDE.md     # 타 AI 에이전트 호환용 헌법 파일
-├── 📄 skills-index.md           # 156종 엄선 스킬 통합 색인표 (핵심 카탈로그)
+├── 📄 skills-index.md           # 199종 엄선 스킬 통합 색인표 (핵심 카탈로그)
 ├── 📄 ecc-catalog.md            # ECC 292종 실전 프로덕션 스킬 카탈로그
 ├── 📄 google-skills-catalog.md   # Google 공식 137종 클라우드/AI/광고 스킬 카탈로그
 ├── ⚡ install.ps1 / install.sh   # 다른 기기 원클릭 글로벌 셋업 스크립트

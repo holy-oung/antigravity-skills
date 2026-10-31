@@ -33,6 +33,11 @@ description: >
 1. `C:\Users\Han\Documents\antigravity\skills-index.md`를 연다. 보관소에 실제로 있는 팩만 한 줄씩 적혀 있다(약 30줄).
 2. 거기 없으면 `C:\Users\Han\Documents\antigravity\skills\catalog.md`(북마크 201선)에서 찾고, "보관소에 없음, GitHub에서 받아야 함"이라고 알린다.
 
+#### 📌 새 스킬(캡처·링크) 유입 시 등록 규칙
+* **북마크만**: `skills/catalog.md`에 추가.
+* **실제로 clone했으면**: `catalog.md` 표시(`**[보관소 복제됨]**`) + 루트 `skills-index.md` 표에 한 줄 추가.
+* **표 중복 금지**: `skill-vault/SKILL.md`에는 표를 다시 만들지 않는다 (루트 `skills-index.md` 단일 진실 공급원 유지).
+
 ---
 
 ## ⚡ 3단계: 하이브리드 격리 & 생명주기 (Lifecycle Management)
